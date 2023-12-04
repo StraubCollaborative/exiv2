@@ -12,10 +12,8 @@ Gem::Specification.new do |s|
   s.summary     = %q{A simple wrapper around Exiv2}
   s.description = %q{A simple wrapper around the C++ Exiv2 libary for reading image metadata}
 
-  s.rubyforge_project = "exiv2"
-
-  s.add_development_dependency "rspec"
-  s.add_development_dependency "rake-compiler"
+  s.add_development_dependency "rspec", "~> 3.1.0"
+  s.add_development_dependency "rake-compiler", "~> 1.2.5"
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
