@@ -66,7 +66,6 @@ static VALUE xmp_data_class;
 static VALUE xmp_data_each(VALUE self);
 static VALUE xmp_data_add(VALUE self, VALUE key, VALUE value);
 static VALUE xmp_data_delete(VALUE self, VALUE key);
-static VALUE xmp_register_ns(VALUE self, VALUE uri, VALUE ns);
 
 extern "C" void Init_exiv2() {
   VALUE enumerable_module = rb_const_get(rb_cObject, rb_intern("Enumerable"));
@@ -106,7 +105,6 @@ extern "C" void Init_exiv2() {
   rb_define_method(xmp_data_class, "each", (Method)xmp_data_each, 0);
   rb_define_method(xmp_data_class, "add", (Method)xmp_data_add, 2);
   rb_define_method(xmp_data_class, "delete", (Method)xmp_data_delete, 1);
-  rb_define_method(xmp_data_class, "register", (Method)xmp_register_ns, 2);
 }
 
 
@@ -294,15 +292,5 @@ static VALUE xmp_data_delete(VALUE self, VALUE key) {
   if(pos == data->end()) return Qfalse;
   data->erase(pos);
   
-  return Qtrue;
-}
-
-static VALUE xmp_register_ns(VALUE self, VALUE uri, VALUE ns) {
-  try {
-    Exiv2::XmpProperties::registerNs(to_std_string(uri), to_std_string(ns));
-  }
-  catch (Exiv2::BasicError<char> error) {
-    rb_raise(basic_error_class, "%s", error.what());
-  }
   return Qtrue;
 }
