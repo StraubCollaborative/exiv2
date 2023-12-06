@@ -12,12 +12,20 @@ Gem::Specification.new do |s|
   s.summary     = %q{A simple wrapper around Exiv2}
   s.description = %q{A simple wrapper around the C++ Exiv2 libary for reading image metadata}
 
-  s.add_development_dependency "rspec", "~> 3.1.0"
-  s.add_development_dependency "rake-compiler", "~> 1.2.5"
+  s.metadata['bug_tracker_uri'] = "#{s.homepage}/issues"
+  s.metadata['changelog_uri'] = "#{s.homepage}/releases"
+  s.metadata['documentation_uri'] = "https://www.rubydoc.info/gems/#{s.name}/#{s.version}"
+  s.metadata['homepage_uri'] = s.homepage
+  s.metadata['source_code_uri'] = "#{s.homepage}/tree/v#{s.version}"
 
-  s.files         = `git ls-files`.split("\n")
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.add_development_dependency "rspec"
+  s.add_development_dependency "rake-compiler"
+
+  s.files = Dir.chdir(__dir__) do
+    `git ls-files -z`.split("\x0").select do |file|
+      file.start_with?('ext', 'lib', 'LICENSE', 'README')
+    end
+  end
   s.require_paths = ["lib", "ext"]
   s.extensions    = ["ext/exiv2/extconf.rb"]
 end
