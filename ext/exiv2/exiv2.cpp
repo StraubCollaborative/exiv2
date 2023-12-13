@@ -66,13 +66,15 @@ static VALUE xmp_data_class;
 static VALUE xmp_data_each(VALUE self);
 static VALUE xmp_data_add(VALUE self, VALUE key, VALUE value);
 static VALUE xmp_data_delete(VALUE self, VALUE key);
+static VALUE xmp_register_ns(VALUE self, VALUE uri, VALUE ns);
 
 extern "C" void Init_exiv2() {
   VALUE enumerable_module = rb_const_get(rb_cObject, rb_intern("Enumerable"));
 
   exiv2_module = rb_define_module("Exiv2");
 
-  basic_error_class = rb_define_class_under(exiv2_module, "BasicError", rb_eRuntimeError);
+  basic_error_class = rb_define_class_under(exiv2_module, "Error", rb_eRuntimeError);
+  rb_undef_alloc_func(basic_error_class);
 
   image_class = rb_define_class_under(exiv2_module, "Image", rb_cObject);
   rb_undef_alloc_func(image_class);
@@ -105,6 +107,7 @@ extern "C" void Init_exiv2() {
   rb_define_method(xmp_data_class, "each", (Method)xmp_data_each, 0);
   rb_define_method(xmp_data_class, "add", (Method)xmp_data_add, 2);
   rb_define_method(xmp_data_class, "delete", (Method)xmp_data_delete, 1);
+  rb_define_method(xmp_data_class, "register", (Method)xmp_register_ns, 2);
 }
 
 
@@ -121,7 +124,7 @@ static VALUE image_read_metadata(VALUE self) {
   try {
     image->readMetadata();
   }
-  catch (Exiv2::BasicError<char> error) {
+  catch (Exiv2::Error& error) {
     rb_raise(basic_error_class, "%s", error.what());
   }
 
@@ -135,7 +138,7 @@ static VALUE image_write_metadata(VALUE self) {
   try {
     image->writeMetadata();
   }
-  catch (Exiv2::BasicError<char> error) {
+  catch (Exiv2::Error& error) {
     rb_raise(basic_error_class, "%s", error.what());
   }
 
@@ -178,10 +181,10 @@ static VALUE image_factory_open(VALUE klass, VALUE path) {
   Exiv2::Image* image;
 
   try {
-    Exiv2::Image::AutoPtr image_auto_ptr = Exiv2::ImageFactory::open(to_std_string(path));
+    Exiv2::Image::UniquePtr image_auto_ptr = Exiv2::ImageFactory::open(to_std_string(path));
     image = image_auto_ptr.release(); // Release the AutoPtr, so we can keep the image around.
   }
-  catch (Exiv2::BasicError<char> error) {
+  catch (Exiv2::Error& error) {
     rb_raise(basic_error_class, "%s", error.what());
   }
 
@@ -201,13 +204,13 @@ static VALUE exif_data_add(VALUE self, VALUE key, VALUE value) {
   
   Exiv2::ExifKey exifKey = Exiv2::ExifKey(to_std_string(key));
   
-#if EXIV2_MAJOR_VERSION <= 0 && EXIV2_MINOR_VERSION <= 20
-  Exiv2::TypeId typeId = Exiv2::ExifTags::tagType(exifKey.tag(), exifKey.ifdId());
-#else
-  Exiv2::TypeId typeId = exifKey.defaultTypeId();
-#endif
+  #if EXIV2_MAJOR_VERSION <= 0 && EXIV2_MINOR_VERSION <= 20
+    Exiv2::TypeId typeId = Exiv2::ExifTags::tagType(exifKey.tag(), exifKey.ifdId());
+  #else
+    Exiv2::TypeId typeId = exifKey.defaultTypeId();
+  #endif
   
-  Exiv2::Value::AutoPtr v = Exiv2::Value::create(typeId);
+  Exiv2::Value::UniquePtr v = Exiv2::Value::create(typeId);
   v->read(to_std_string(value));
   
   data->add(exifKey, v.get());
@@ -240,7 +243,7 @@ static VALUE iptc_data_add(VALUE self, VALUE key, VALUE value) {
   Exiv2::IptcKey iptcKey  = Exiv2::IptcKey(to_std_string(key));
   Exiv2::TypeId typeId    = Exiv2::IptcDataSets::dataSetType(iptcKey.tag(), iptcKey.record());
   
-  Exiv2::Value::AutoPtr v = Exiv2::Value::create(typeId);
+  Exiv2::Value::UniquePtr v = Exiv2::Value::create(typeId);
   v->read(to_std_string(value));
   
   if(data->add(iptcKey, v.get())) {
@@ -274,7 +277,7 @@ static VALUE xmp_data_add(VALUE self, VALUE key, VALUE value) {
   Exiv2::XmpKey xmpKey = Exiv2::XmpKey(to_std_string(key));
   Exiv2::TypeId typeId = Exiv2::XmpProperties::propertyType(xmpKey);
   
-  Exiv2::Value::AutoPtr v = Exiv2::Value::create(typeId);
+  Exiv2::Value::UniquePtr v = Exiv2::Value::create(typeId);
   v->read(to_std_string(value));
   
   if(data->add(xmpKey, v.get())) {
@@ -292,5 +295,15 @@ static VALUE xmp_data_delete(VALUE self, VALUE key) {
   if(pos == data->end()) return Qfalse;
   data->erase(pos);
   
+  return Qtrue;
+}
+
+static VALUE xmp_register_ns(VALUE self, VALUE uri, VALUE ns) {
+  try {
+    Exiv2::XmpProperties::registerNs(to_std_string(uri), to_std_string(ns));
+  }
+  catch (Exiv2::Error& error) {
+    rb_raise(basic_error_class, "%s", error.what());
+  }
   return Qtrue;
 }
