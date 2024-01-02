@@ -118,17 +118,23 @@ static void image_free(Exiv2::Image* image) {
 }
 
 static VALUE image_read_metadata(VALUE self) {
+  VALUE result = Qnil;
   Exiv2::Image* image;
   Data_Get_Struct(self, Exiv2::Image, image);
 
   try {
+    char buf[BUFSIZ];
+    setbuf(stderr, buf);
     image->readMetadata();
+    if (buf[1]) {
+      result = rb_sprintf("%s", buf); // If stderr outputs, we direct that into a string and return as result
+    }
   }
   catch (Exiv2::Error& error) {
     rb_raise(basic_error_class, "%s", error.what());
   }
 
-  return Qnil;
+  return result;
 }
 
 static VALUE image_write_metadata(VALUE self) {
